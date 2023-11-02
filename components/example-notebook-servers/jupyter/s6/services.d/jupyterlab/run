@@ -1,4 +1,15 @@
 #!/command/with-contenv bash
+
+# the runtime directory must be a path that is NOT a persistent volume
+# as volumes often cause permission issues https://github.com/jupyter/notebook/issues/5058
+export JUPYTER_RUNTIME_DIR="/tmp/jupyter_runtime"
+
+# the collaboration extension creates a '.jupyter_ystore.db' file in the start directory
+# we don't want to persist it or have multiple servers trying to use the same file
+# so we override the default path using the 'SQLiteYStore.db_path' traitlet
+# https://github.com/jupyterlab/jupyter-collaboration/pull/66
+export JUPYTER_RTC_DB_PATH="${JUPYTER_RUNTIME_DIR}/.jupyter_ystore.db"
+
 cd "${HOME}"
 exec /opt/conda/bin/jupyter lab \
   --notebook-dir="${HOME}" \
@@ -9,5 +20,8 @@ exec /opt/conda/bin/jupyter lab \
   --ServerApp.token="" \
   --ServerApp.password="" \
   --ServerApp.allow_origin="*" \
+  --ServerApp.allow_remote_access=True \
+  --ServerApp.authenticate_prometheus=False \
   --ServerApp.base_url="${NB_PREFIX}" \
-  --ServerApp.authenticate_prometheus=False
+  --collaborative \
+  --SQLiteYStore.db_path="${JUPYTER_RTC_DB_PATH}"
