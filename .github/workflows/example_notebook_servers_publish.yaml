@@ -100,8 +100,7 @@ jobs:
     needs: [ jupyter_images ]
     secrets: inherit
     with:
-      # TODO: support 'linux/arm64' for TensorFlow CUDA images
-      build_arch: linux/amd64
+      build_arch: linux/amd64,linux/arm64
       image_folders: |
         jupyter-tensorflow-cuda
         jupyter-tensorflow-cuda-full

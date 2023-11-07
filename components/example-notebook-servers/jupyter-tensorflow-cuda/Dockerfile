@@ -12,21 +12,32 @@ ARG TENSORFLOW_VERSION=2.13.0
 
 # args - cuda versions
 #  - TF CUDA version matrix: https://www.tensorflow.org/install/source#gpu
-#  - CUDA repo (for package version numbers): https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/
+#  - CUDA repo (for package version numbers):
+#     - amd64 (ubuntu 22.04): https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/
+#     - arm64 (ubuntu 20.04): https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/sbsa/
 ARG CUDA_VERSION=11.8
-ARG CUDNN_VERSION=8.6.0.163
-ARG TENSORRT_VERSION=8.6.1.6
 
 USER root
 
 # install - cuda
+# NOTE: we use the Ubuntu 20.04 repo for arm64 as TensorRT for CUDA 11.8 is not available in the 22.04 repo
 RUN case "${TARGETARCH}" in \
-      amd64) CUDA_ARCH="x86_64" ;; \
-      arm64) CUDA_ARCH="sbsa" ;; \
-      *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
+      amd64) \
+        CUDA_DISTRO="ubuntu2204"; \
+        CUDA_ARCH="x86_64"; \
+        CUDNN_VERSION="8.6.0.163"; \
+        TENSORRT_VERSION="8.6.1.6" ;; \
+      arm64) \
+        CUDA_DISTRO="ubuntu2004"; \
+        CUDA_ARCH="sbsa"; \
+        CUDNN_VERSION="8.6.0.163"; \
+        TENSORRT_VERSION="8.5.3" ;; \
+      *) \
+        echo "Unsupported architecture: ${TARGETARCH}"; \
+        exit 1 ;; \
     esac \
- && curl -sL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${CUDA_ARCH}/3bf863cc.pub" | apt-key add - \
- && echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${CUDA_ARCH}/ /" > /etc/apt/sources.list.d/cuda.list \
+ && curl -sL "https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/3bf863cc.pub" | apt-key add - \
+ && echo "deb https://developer.download.nvidia.com/compute/cuda/repos/${CUDA_DISTRO}/${CUDA_ARCH}/ /" > /etc/apt/sources.list.d/cuda.list \
  && apt-get -yq update \
  && apt-get -yq install --no-install-recommends --no-install-suggests \
     cuda-command-line-tools-${CUDA_VERSION/./-} \
