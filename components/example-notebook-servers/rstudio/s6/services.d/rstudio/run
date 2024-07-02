@@ -1,4 +1,5 @@
 #!/command/with-contenv bash
+
 # using rstudio with non-root and `--auth-none=1` inexplicably requires USER to be set
 export USER="${NB_USER}"
 

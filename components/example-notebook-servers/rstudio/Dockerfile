@@ -101,23 +101,27 @@ RUN case "${TARGETARCH}" in \
       *) echo "Unsupported architecture: ${TARGETARCH}"; exit 1 ;; \
     esac \
  && curl -fsSL "${RSTUDIO_DEB_URL}" -o /tmp/rstudio-server.deb \
-    # add rstudio public code-signing keys
+    # validate the build signature
+ && export GNUPGHOME="$(mktemp -d)" \
  && gpg --keyserver keys.gnupg.net --keyserver pgp.surfnet.nl --recv-keys 3F32EE77E331692F \
  && gpg --keyserver keys.openpgp.org --recv-keys 51C0B5BB19F92D60 \
-    # validate the build signature
  && dpkg-sig --verify /tmp/rstudio-server.deb \
+ && rm -rf "${GNUPGHOME}" \
+    # install rstudio-server
  && dpkg -i /tmp/rstudio-server.deb \
  && rm -f /tmp/rstudio-server.deb \
     # use advisory file-locks to improve PVC support
  && echo "lock-type=advisory" > /etc/rstudio/file-locks \
     # allow kubeflow to display rstudio in an iframe
  && echo "www-frame-origin=same" >> /etc/rstudio/rserver.conf \
-    # allows the non-root NB_USER to run rstudio
+    # allows the non-root NB_USER to run rstudio \
+ && chown -R ${NB_USER}:${NB_GID} ${R_HOME} \
  && chown -R ${NB_USER}:${NB_GID} /etc/rstudio \
  && chown -R ${NB_USER}:${NB_GID} /run/rstudio-server* \
  && chown -R ${NB_USER}:${NB_GID} /usr/lib/rstudio-server \
  && chown -R ${NB_USER}:${NB_GID} /var/lib/rstudio-server \
-    # give group same access as user (needed for OpenShift)
+    # give group same access as user (needed for OpenShift) \
+ && chmod -R g=u ${R_HOME} \
  && chmod -R g=u /etc/rstudio \
  && chmod -R g=u /run/rstudio-server* \
  && chmod -R g=u /usr/lib/rstudio-server \
