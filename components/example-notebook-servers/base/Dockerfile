@@ -61,6 +61,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     lsb-release \
     nano \
     software-properties-common \
+    sudo \
     tzdata \
     unzip \
     vim \
