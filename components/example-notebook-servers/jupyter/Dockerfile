@@ -101,4 +101,12 @@ RUN cp -p -r -T "${HOME}" "${HOME_TMP}" \
     # give group same access as user (needed for OpenShift)
  && chmod -R g=u "${HOME_TMP}"
 
+##
+## TODO: move this to a lower image
+##
+# add `1000` to nopasswd sudoers in /etc/sudoers.d
+USER root
+RUN echo "${NB_USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nb-user
+USER $NB_UID
+
 EXPOSE 8888
