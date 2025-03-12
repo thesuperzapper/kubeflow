@@ -2,4 +2,5 @@
 kfp==2.11.0
 
 # jupyterlab extensions
-jupyterlab-git==0.50.2
+jupyterlab-git==0.51.0
+jupyter-collaboration==3.1.0
