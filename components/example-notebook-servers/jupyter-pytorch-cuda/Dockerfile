@@ -20,7 +20,8 @@ ARG PYTORCH_VERSION=2.7.0.dev20250310
 
 # args - cuda versions
 ARG CUDA_VERSION=12.8
-ARG CUDNN_VERSION=9.8.0.87
+ARG CUDA_TOOLKIT_VERSION=12.8.1-1
+ARG CUDNN_VERSION=9.8.0.87-1
 
 USER root
 
@@ -29,6 +30,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get -yq update \
  && apt-get -yq install --no-install-recommends \
     build-essential \
+    cmake \
+    zlib1g \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
@@ -41,12 +44,13 @@ RUN case "${TARGETARCH}" in \
  && curl -sL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${CUDA_ARCH}/3bf863cc.pub" | apt-key add - \
  && echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${CUDA_ARCH}/ /" > /etc/apt/sources.list.d/cuda.list \
  && apt-get -yq update \
- && apt-get -yq install --no-install-recommends --no-install-suggests \
+ && apt-get -yq install --no-install-recommends \
     cuda-command-line-tools-${CUDA_VERSION/./-} \
     cuda-cudart-${CUDA_VERSION/./-} \
     cuda-libraries-${CUDA_VERSION/./-} \
     cuda-nvcc-${CUDA_VERSION/./-} \
-    libcudnn9-dev-cuda-12=${CUDNN_VERSION}-1 \
+    cuda-toolkit-${CUDA_VERSION/./-}=${CUDA_TOOLKIT_VERSION} \
+    libcudnn9-cuda-12=${CUDNN_VERSION} \
  && apt-mark hold \
     libcublas-${CUDA_VERSION/./-} \
     libcudnn9-dev-cuda-12 \
