@@ -7,17 +7,6 @@ FROM $BASE_IMG
 
 ARG TARGETARCH
 
-# args - software versions
-# https://github.com/pytorch/pytorch/releases
-# https://github.com/pytorch/audio/releases
-# https://github.com/pytorch/vision/releases
-# NOTE: correct version alignments are found at https://pytorch.org/get-started/previous-versions/
-#       they sometimes forget to publish a github release of `torchaudio` or `torchvision` when the cut a
-#       patch release of `torch`, but they still publish a patch of `torchaudio` and `torchvision` on pypi
-ARG PYTORCH_VERSION=2.7.0.dev20250310
-#ARG TORCHAUDIO_VERSION=2.6.0.dev2025XXXX
-#ARG TORCHVISION_VERSION=0.22.0.dev2025XXXX
-
 # args - cuda versions
 ARG CUDA_VERSION=12.8
 ARG CUDA_TOOLKIT_VERSION=12.8.1-1
@@ -25,12 +14,17 @@ ARG CUDNN_VERSION=9.8.0.87-1
 
 USER root
 
-# install -- build tools
+##
+## TODO: move the ssh install to a lower image, if we make SSH the standard
+##
+# install -- build tools and ssh
 RUN export DEBIAN_FRONTEND=noninteractive \
  && apt-get -yq update \
  && apt-get -yq install --no-install-recommends \
     build-essential \
     cmake \
+    openssh-client \
+    openssh-server \
     zlib1g \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
@@ -70,6 +64,32 @@ ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 ENV NVIDIA_REQUIRE_CUDA "cuda>=12.8"
 
+# args - python versions
+# https://github.com/pytorch/pytorch/releases
+# https://github.com/pytorch/audio/releases
+# https://github.com/pytorch/vision/releases
+# NOTE: correct version alignments are found at https://pytorch.org/get-started/previous-versions/
+#       they sometimes forget to publish a github release of `torchaudio` or `torchvision` when the cut a
+#       patch release of `torch`, but they still publish a patch of `torchaudio` and `torchvision` on pypi
+ARG PYTORCH_VERSION=2.8.0.dev20250318
+#ARG TORCHAUDIO_VERSION=2.6.0.dev2025XXXX
+#ARG TORCHVISION_VERSION=0.22.0.dev2025XXXX
+ARG BITSANDBYTES_VERSION=0.45.5
+
+# install - bitsandbytes
+# NOTE: upstream bitsandbytes dose not ship an aarch64 wheel
+#       build from source (with cuda support) at the specified version according to:
+#       https://huggingface.co/docs/bitsandbytes/main/en/installation#cuda-compile
+RUN curl -fsSL https://github.com/bitsandbytes-foundation/bitsandbytes/archive/refs/tags/${BITSANDBYTES_VERSION}.tar.gz -o /tmp/bitsandbytes.tar.gz \
+ && mkdir /tmp/bitsandbytes-${BITSANDBYTES_VERSION}/ \
+ && tar xzf /tmp/bitsandbytes.tar.gz -C /tmp \
+ && cd /tmp/bitsandbytes-${BITSANDBYTES_VERSION}/ \
+ && cmake -DCOMPUTE_BACKEND=cuda -S . \
+ && make \
+ && python3 -m pip install --quiet --no-cache-dir . \
+ && rm -f /tmp/bitsandbytes.tar.gz \
+ && rm -rf /tmp/bitsandbytes-${BITSANDBYTES_VERSION}/
+
 # install - pytorch (cuda)
 RUN python3 -m pip install --quiet --no-cache-dir --index-url https://download.pytorch.org/whl/nightly/cu128 \
     torch==${PYTORCH_VERSION} \
@@ -80,3 +100,6 @@ RUN python3 -m pip install --quiet --no-cache-dir --index-url https://download.p
 COPY --chown=${NB_USER}:${NB_GID} requirements.txt /tmp
 RUN python3 -m pip install -r /tmp/requirements.txt --quiet --no-cache-dir \
  && rm -f /tmp/requirements.txt
+
+# s6 - copy scripts
+COPY --chown=${NB_USER}:${NB_GID} --chmod=755 s6/ /etc

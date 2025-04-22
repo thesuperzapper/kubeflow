@@ -1,0 +1,88 @@
+#!/command/with-contenv bash
+
+# read the sshd config from the environment, or use our defaults
+export SSHD_PID_FILE="${SSHD_PID_FILE:-/tmp/sshd/sshd.pid}"
+export SSHD_HOST_KEY="${SSHD_HOST_KEY:-$HOME/.ssh/id_rsa}"
+export SSHD_AUTHORIZED_KEYS="${SSHD_AUTHORIZED_KEYS:-$HOME/.ssh/authorized_keys}"
+
+# make the sshd pid file directory
+SSHD_PID_FILE_DIR=$(dirname "${SSHD_PID_FILE}")
+if [[ ! -d "${SSHD_PID_FILE_DIR}" ]]; then
+  echo "INFO: creating sshd pid file directory ${SSHD_PID_FILE_DIR}..."
+  mkdir -p "${SSHD_PID_FILE_DIR}" || {
+    echo "ERROR: failed to create sshd pid file directory ${SSHD_PID_FILE_DIR}";
+    exit 1;
+  }
+fi
+
+# remove the sshd pid file if it exists
+if [[ -f "${SSHD_PID_FILE}" ]]; then
+  echo "INFO: removing existing sshd pid file ${SSHD_PID_FILE}..."
+  rm -f "${SSHD_PID_FILE}" || {
+    echo "ERROR: failed to remove sshd pid file ${SSHD_PID_FILE}";
+    exit 1;
+  }
+fi
+
+# generate the sshd host key if it does not exist
+if [[ ! -f "${SSHD_HOST_KEY}" ]]; then
+
+  # fail if the public key file exists
+  SSHD_HOST_KEY_PUB="${SSHD_HOST_KEY}.pub"
+  if [[ -f "${SSHD_HOST_KEY_PUB}" ]]; then
+    echo "ERROR: sshd host key ${SSHD_HOST_KEY} does not exist, but public key ${SSHD_HOST_KEY_PUB} exists";
+    echo "ERROR: please remove the public key file ${SSHD_HOST_KEY_PUB} or provide its private key at ${SSHD_HOST_KEY}";
+    exit 1;
+  fi
+
+  # create the sshd host key directory
+  SSHD_HOST_KEY_DIR=$(dirname "${SSHD_HOST_KEY}")
+  if [[ ! -d "${SSHD_HOST_KEY_DIR}" ]]; then
+    echo "INFO: creating sshd host key directory ${SSHD_HOST_KEY_DIR}..."
+    mkdir -p "${SSHD_HOST_KEY_DIR}" || {
+      echo "ERROR: failed to create sshd host key directory ${SSHD_HOST_KEY_DIR}";
+      exit 1;
+    }
+  fi
+
+  echo "INFO: generating sshd host key ${SSHD_HOST_KEY}..."
+  ssh-keygen -t rsa -b 4096 -f "${SSHD_HOST_KEY}" -N "" -q || {
+    echo "ERROR: failed to generate sshd host key ${SSHD_HOST_KEY}";
+    exit 1;
+  }
+fi
+
+# populate the authorized keys file, if it does not exist
+if [[ ! -f "${SSHD_AUTHORIZED_KEYS}" ]]; then
+
+  # create the sshd authorized keys directory
+  SSHD_AUTHORIZED_KEYS_DIR=$(dirname "${SSHD_AUTHORIZED_KEYS}")
+  if [[ ! -d "${SSHD_AUTHORIZED_KEYS_DIR}" ]]; then
+    echo "INFO: creating sshd authorized keys directory ${SSHD_AUTHORIZED_KEYS_DIR}..."
+    mkdir -p "${SSHD_AUTHORIZED_KEYS_DIR}" || {
+      echo "ERROR: failed to create sshd authorized keys directory ${SSHD_AUTHORIZED_KEYS_DIR}";
+      exit 1;
+    }
+  fi
+
+  # use the public key file as the sshd authorized keys file
+  SSHD_HOST_KEY_PUB="${SSHD_HOST_KEY}.pub"
+  if [[ -f "${SSHD_HOST_KEY_PUB}" ]]; then
+    echo "INFO: using public key file ${SSHD_HOST_KEY_PUB} as sshd authorized keys file ${SSHD_AUTHORIZED_KEYS}..."
+    cp "${SSHD_HOST_KEY_PUB}" "${SSHD_AUTHORIZED_KEYS}" || {
+      echo "ERROR: failed to copy public key file ${SSHD_HOST_KEY_PUB} to sshd authorized keys file ${SSHD_AUTHORIZED_KEYS}";
+      exit 1;
+    }
+  else
+    echo "WARNING: sshd authorized keys file ${SSHD_AUTHORIZED_KEYS} does not exist, and no public key found";
+    echo "WARNING: please manually create the file ${SSHD_AUTHORIZED_KEYS} or provide a public key at ${SSHD_HOST_KEY_PUB}";
+  fi
+fi
+
+echo "INFO: starting sshd..."
+exec /usr/sbin/sshd -D -e \
+  -o "PidFile=${SSHD_PID_FILE}" \
+  -o "HostKey=${SSHD_HOST_KEY}" \
+  -o "AuthorizedKeysFile=${SSHD_AUTHORIZED_KEYS}" \
+  -o StrictModes=no \
+  -o Port=2222
