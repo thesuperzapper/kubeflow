@@ -71,7 +71,7 @@ ENV NVIDIA_REQUIRE_CUDA "cuda>=12.8"
 # NOTE: correct version alignments are found at https://pytorch.org/get-started/previous-versions/
 #       they sometimes forget to publish a github release of `torchaudio` or `torchvision` when the cut a
 #       patch release of `torch`, but they still publish a patch of `torchaudio` and `torchvision` on pypi
-ARG PYTORCH_VERSION=2.8.0.dev20250318
+ARG PYTORCH_VERSION=2.7.0
 #ARG TORCHAUDIO_VERSION=2.6.0.dev2025XXXX
 #ARG TORCHVISION_VERSION=0.22.0.dev2025XXXX
 ARG BITSANDBYTES_VERSION=0.45.5
@@ -91,7 +91,7 @@ RUN curl -fsSL https://github.com/bitsandbytes-foundation/bitsandbytes/archive/r
  && rm -rf /tmp/bitsandbytes-${BITSANDBYTES_VERSION}/
 
 # install - pytorch (cuda)
-RUN python3 -m pip install --quiet --no-cache-dir --index-url https://download.pytorch.org/whl/nightly/cu128 \
+RUN python3 -m pip install --quiet --no-cache-dir --index-url https://download.pytorch.org/whl/cu128 \
     torch==${PYTORCH_VERSION} \
     torchaudio \
     torchvision
